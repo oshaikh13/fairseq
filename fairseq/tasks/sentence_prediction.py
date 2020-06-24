@@ -67,13 +67,16 @@ class SentencePredictionTask(FairseqTask):
         super().__init__(args)
         self.dictionary = data_dictionary
         self._label_dictionary = label_dictionary
-        if not hasattr(args, 'max_positions'):
-            self._max_positions = (
-                args.max_source_positions,
-                args.max_target_positions,
-            )
-        else:
-            self._max_positions = args.max_positions
+        # if not hasattr(args, 'max_positions'):
+        #     self._max_positions = (
+        #         args.max_source_positions,
+        #         args.max_target_positions,
+        #     )
+        # else:
+        #     self._max_positions = args.max_positions
+
+        # stupid hack because fairseq doesn't recognize max_positions in command line tools...
+        self._max_positions = 512
         args.tokens_per_sample = self._max_positions
 
     @classmethod
@@ -151,7 +154,7 @@ class SentencePredictionTask(FairseqTask):
             split,
             self.args.shorten_data_split_whitelist,
             self.args.shorten_method,
-            self.args.max_positions,
+            self.max_positions(),
             self.args.seed,
         )
 

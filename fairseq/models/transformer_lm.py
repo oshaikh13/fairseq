@@ -18,8 +18,13 @@ from fairseq.modules import (
     CharacterTokenEmbedder,
 )
 
-DEFAULT_MAX_TARGET_POSITIONS = 1024
+import logging
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
+DEFAULT_MAX_TARGET_POSITIONS = 1024
+logger = logging.getLogger(__name__)
 
 @register_model('transformer_lm')
 class TransformerLanguageModel(FairseqLanguageModel):
@@ -44,6 +49,7 @@ class TransformerLanguageModel(FairseqLanguageModel):
 
     def __init__(self, decoder):
         super().__init__(decoder)
+        self.classification_heads = nn.ModuleDict()
 
     @staticmethod
     def add_args(parser):
@@ -169,6 +175,60 @@ class TransformerLanguageModel(FairseqLanguageModel):
     def build_embedding(cls, args, dictionary, embed_dim, path=None):
         embed_tokens = Embedding(len(dictionary), embed_dim, dictionary.pad())
         return embed_tokens
+
+    def forward(self, *args, **kwargs):
+        x, extra = super().forward(*args, **kwargs)
+        if kwargs["classification_head_name"] is not None:
+            x = self.classification_heads[kwargs["classification_head_name"]](x)
+        return x, extra
+    
+    def register_classification_head(self, name, num_classes=None, inner_dim=None, **kwargs):
+        """Register a classification head."""
+        logger.info("Registering classification head: {0}".format(name))
+        if name in self.classification_heads:
+            prev_num_classes = self.classification_heads[name].out_proj.out_features
+            prev_inner_dim = self.classification_heads[name].dense.out_features
+            if num_classes != prev_num_classes or inner_dim != prev_inner_dim:
+                logger.warning(
+                    're-registering head "{}" with num_classes {} (prev: {}) '
+                    'and inner_dim {} (prev: {})'.format(
+                        name, num_classes, prev_num_classes, inner_dim, prev_inner_dim
+                    )
+                )
+        self.classification_heads[name] = TransformerClassificationHead(
+            self.args.decoder_embed_dim,
+            inner_dim or self.args.decoder_embed_dim,
+            num_classes,
+            self.args.pooler_activation_fn,
+            self.args.pooler_dropout,
+        )
+
+
+class TransformerClassificationHead(nn.Module):
+    """Head for sentence-level classification tasks."""
+
+    def __init__(
+        self,
+        input_dim,
+        inner_dim,
+        num_classes,
+        activation_fn,
+        pooler_dropout,
+    ):
+        super().__init__()
+        self.dense = nn.Linear(input_dim, inner_dim)
+        self.activation_fn = utils.get_activation_fn(activation_fn)
+        self.dropout = nn.Dropout(p=pooler_dropout)
+        self.out_proj = nn.Linear(inner_dim, num_classes)
+
+    def forward(self, features, **kwargs):
+        x = features
+        x = self.dropout(x)
+        x = self.dense(x)
+        x = self.activation_fn(x)
+        x = self.dropout(x)
+        x = self.out_proj(x)
+        return x
 
 @register_model_architecture('transformer_lm', 'transformer_lm')
 def base_lm_architecture(args):

@@ -127,42 +127,42 @@ class BaseFairseqModel(nn.Module):
                 m.set_num_updates(num_updates)
         self.apply(_apply)
 
-
+    # disable for now so we can finetune :)
     def make_generation_fast_(self, **kwargs):
         """Optimize model for faster generation."""
-        if self._is_generation_fast:
-            return  # only apply once
-        self._is_generation_fast = True
+        # if self._is_generation_fast:
+        #     return  # only apply once
+        # self._is_generation_fast = True
 
-        # remove weight norm from all modules in the network
-        def apply_remove_weight_norm(module):
-            try:
-                nn.utils.remove_weight_norm(module)
-            except ValueError:  # this module didn't have weight norm
-                return
+        # # remove weight norm from all modules in the network
+        # def apply_remove_weight_norm(module):
+        #     try:
+        #         nn.utils.remove_weight_norm(module)
+        #     except ValueError:  # this module didn't have weight norm
+        #         return
 
-        self.apply(apply_remove_weight_norm)
+        # self.apply(apply_remove_weight_norm)
 
-        seen = set()
+        # seen = set()
 
-        def apply_make_generation_fast_(module):
-            if (
-                module != self
-                and hasattr(module, "make_generation_fast_")
-                and module not in seen
-            ):
-                seen.add(module)
-                module.make_generation_fast_(**kwargs)
+        # def apply_make_generation_fast_(module):
+        #     if (
+        #         module != self
+        #         and hasattr(module, "make_generation_fast_")
+        #         and module not in seen
+        #     ):
+        #         seen.add(module)
+        #         module.make_generation_fast_(**kwargs)
 
-        self.apply(apply_make_generation_fast_)
+        # self.apply(apply_make_generation_fast_)
 
-        def train(mode=True):
-            if mode:
-                raise RuntimeError("cannot train after make_generation_fast")
+        # def train(mode=True):
+        #     if mode:
+        #         raise RuntimeError("cannot train after make_generation_fast")
 
         # this model should no longer be used for training
         self.eval()
-        self.train = train
+        # self.train = train
 
     def prepare_for_onnx_export_(self, **kwargs):
         """Make model exportable via ONNX trace."""
