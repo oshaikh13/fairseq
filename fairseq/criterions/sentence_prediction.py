@@ -75,7 +75,7 @@ class SentencePredictionCriterion(FairseqCriterion):
 
         if not self.regression_target:
             preds = logits.argmax(dim=1)
-            logging_output["matthew"] = matthews_corrcoef(targets.cpu(), preds.cpu())
+            logging_output["matthew"] = matthews_corrcoef(targets.cpu(), preds.cpu()) * sample_size
             logging_output['ncorrect'] = (preds == targets).sum()
 
         return loss, sample_size, logging_output
@@ -87,10 +87,8 @@ class SentencePredictionCriterion(FairseqCriterion):
         ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
-        matthew = sum(log.get('matthew', 0) for log in logging_outputs) / len(logging_outputs) # not good...
-
-        
-        
+        matthew = sum(log.get('matthew', 0) for log in logging_outputs)
+            
         metrics.log_scalar('loss', loss_sum / sample_size / math.log(2), sample_size, round=3)
         if sample_size != ntokens:
             metrics.log_scalar('nll_loss', loss_sum / ntokens / math.log(2), ntokens, round=3)
@@ -98,7 +96,7 @@ class SentencePredictionCriterion(FairseqCriterion):
         if len(logging_outputs) > 0 and 'ncorrect' in logging_outputs[0]:
             ncorrect = sum(log.get('ncorrect', 0) for log in logging_outputs)
             metrics.log_scalar('accuracy', 100.0 * ncorrect / nsentences, nsentences, round=1)
-            metrics.log_scalar('matthew', matthew, nsentences, round=1)
+            metrics.log_scalar('matthew', matthew / nsentences, nsentences, round=5)
 
 
     @staticmethod
