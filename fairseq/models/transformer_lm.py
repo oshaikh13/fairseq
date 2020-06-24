@@ -178,7 +178,7 @@ class TransformerLanguageModel(FairseqLanguageModel):
         return embed_tokens
 
     def forward(self, *args, **kwargs):
-        classification_head_name = kwargs.pop("classification_head_name")
+        classification_head_name = kwargs.pop("classification_head_name", None)
         x, extra = super().forward(*args, **kwargs)
         if classification_head_name is not None:
             x = self.classification_heads[classification_head_name](x)
