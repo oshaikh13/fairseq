@@ -231,6 +231,7 @@ class SentencePredictionTask(FairseqTask):
 
         model.register_classification_head(
             getattr(args, 'classification_head_name', 'sentence_classification_head'),
+            args,
             num_classes=self.args.num_classes,
         )
 

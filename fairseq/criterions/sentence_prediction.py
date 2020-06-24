@@ -11,6 +11,8 @@ import torch.nn.functional as F
 from fairseq import metrics, utils
 from fairseq.criterions import FairseqCriterion, register_criterion
 
+import logging
+logger = logging.getLogger(__name__)
 
 @register_criterion('sentence_prediction')
 class SentencePredictionCriterion(FairseqCriterion):
@@ -41,6 +43,7 @@ class SentencePredictionCriterion(FairseqCriterion):
             and self.classification_head_name in model.classification_heads
         ), 'model must provide sentence classification head for --criterion=sentence_prediction'
 
+        
         logits, _ = model(
             **sample['net_input'],
             features_only=True,
@@ -48,10 +51,14 @@ class SentencePredictionCriterion(FairseqCriterion):
         )
         targets = model.get_targets(sample, [logits]).view(-1)
         sample_size = targets.numel()
-
+        
+        # for CoLA mismatch.
+#         logger.info(targets)
+#         logger.info(logits)
+        
         if not self.regression_target:
             lprobs = F.log_softmax(logits, dim=-1, dtype=torch.float32)
-            loss = F.nll_loss(lprobs, targets, reduction='sum')
+            loss = F.nll_loss(lprobs, F.one_hot(targets, num_classes=2), reduction='sum')
         else:
             logits = logits.view(-1).float()
             targets = targets.float()
@@ -65,7 +72,7 @@ class SentencePredictionCriterion(FairseqCriterion):
         }
         if not self.regression_target:
             preds = logits.argmax(dim=1)
-            logging_output['ncorrect'] = (preds == targets).sum()
+            logging_output['ncorrect'] = (preds == F.one_hot(targets, num_classes=2)).sum()
 
         return loss, sample_size, logging_output
 

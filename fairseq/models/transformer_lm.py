@@ -50,6 +50,7 @@ class TransformerLanguageModel(FairseqLanguageModel):
     def __init__(self, decoder):
         super().__init__(decoder)
         self.classification_heads = nn.ModuleDict()
+        self.args = None
 
     @staticmethod
     def add_args(parser):
@@ -177,14 +178,16 @@ class TransformerLanguageModel(FairseqLanguageModel):
         return embed_tokens
 
     def forward(self, *args, **kwargs):
+        classification_head_name = kwargs.pop("classification_head_name")
         x, extra = super().forward(*args, **kwargs)
-        if kwargs["classification_head_name"] is not None:
-            x = self.classification_heads[kwargs["classification_head_name"]](x)
+        if classification_head_name is not None:
+            x = self.classification_heads[classification_head_name](x)
         return x, extra
     
-    def register_classification_head(self, name, num_classes=None, inner_dim=None, **kwargs):
+    def register_classification_head(self, name, args, num_classes=None, inner_dim=None, **kwargs):
         """Register a classification head."""
         logger.info("Registering classification head: {0}".format(name))
+        logger.info("num classes: " + str(num_classes))
         if name in self.classification_heads:
             prev_num_classes = self.classification_heads[name].out_proj.out_features
             prev_inner_dim = self.classification_heads[name].dense.out_features
@@ -196,11 +199,11 @@ class TransformerLanguageModel(FairseqLanguageModel):
                     )
                 )
         self.classification_heads[name] = TransformerClassificationHead(
-            self.args.decoder_embed_dim,
-            inner_dim or self.args.decoder_embed_dim,
+            args.decoder_embed_dim,
+            inner_dim or args.decoder_embed_dim,
             num_classes,
-            self.args.pooler_activation_fn,
-            self.args.pooler_dropout,
+            getattr(args, 'pooler_activation_fn', 'tanh'),
+            getattr(args, 'pooler_dropout', 0.0),
         )
 
 
