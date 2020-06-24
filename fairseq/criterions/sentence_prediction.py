@@ -10,6 +10,7 @@ import torch.nn.functional as F
 
 from fairseq import metrics, utils
 from fairseq.criterions import FairseqCriterion, register_criterion
+from sklearn.metrics import matthews_corrcoef
 
 import logging
 logger = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ class SentencePredictionCriterion(FairseqCriterion):
             features_only=True,
             classification_head_name=self.classification_head_name,
         )
+                
         targets = model.get_targets(sample, [logits]).view(-1)
         sample_size = targets.numel()
         
@@ -58,7 +60,7 @@ class SentencePredictionCriterion(FairseqCriterion):
         
         if not self.regression_target:
             lprobs = F.log_softmax(logits, dim=-1, dtype=torch.float32)
-            loss = F.nll_loss(lprobs, F.one_hot(targets, num_classes=2), reduction='sum')
+            loss = F.nll_loss(lprobs, targets, reduction='sum')
         else:
             logits = logits.view(-1).float()
             targets = targets.float()
@@ -70,9 +72,11 @@ class SentencePredictionCriterion(FairseqCriterion):
             'nsentences': sample_size,
             'sample_size': sample_size,
         }
+
         if not self.regression_target:
             preds = logits.argmax(dim=1)
-            logging_output['ncorrect'] = (preds == F.one_hot(targets, num_classes=2)).sum()
+            logging_output["matthew"] = matthews_corrcoef(targets.cpu(), preds.cpu())
+            logging_output['ncorrect'] = (preds == targets).sum()
 
         return loss, sample_size, logging_output
 
@@ -83,7 +87,10 @@ class SentencePredictionCriterion(FairseqCriterion):
         ntokens = sum(log.get('ntokens', 0) for log in logging_outputs)
         nsentences = sum(log.get('nsentences', 0) for log in logging_outputs)
         sample_size = sum(log.get('sample_size', 0) for log in logging_outputs)
+        matthew = sum(log.get('matthew', 0) for log in logging_outputs) / len(logging_outputs) # not good...
 
+        
+        
         metrics.log_scalar('loss', loss_sum / sample_size / math.log(2), sample_size, round=3)
         if sample_size != ntokens:
             metrics.log_scalar('nll_loss', loss_sum / ntokens / math.log(2), ntokens, round=3)
@@ -91,6 +98,8 @@ class SentencePredictionCriterion(FairseqCriterion):
         if len(logging_outputs) > 0 and 'ncorrect' in logging_outputs[0]:
             ncorrect = sum(log.get('ncorrect', 0) for log in logging_outputs)
             metrics.log_scalar('accuracy', 100.0 * ncorrect / nsentences, nsentences, round=1)
+            metrics.log_scalar('matthew', matthew, nsentences, round=1)
+
 
     @staticmethod
     def logging_outputs_can_be_summed() -> bool:
