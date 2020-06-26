@@ -15,9 +15,9 @@ fi
 GLUE_DATA_FOLDER=$1
 
 # download bpe encoder.json, vocabulary and fairseq dictionary
-wget -N 'https://dl.fbaipublicfiles.com/fairseq/gpt2_bpe/encoder.json'
-wget -N 'https://dl.fbaipublicfiles.com/fairseq/gpt2_bpe/vocab.bpe'
-wget -N 'https://dl.fbaipublicfiles.com/fairseq/gpt2_bpe/dict.txt'
+# wget -N 'https://dl.fbaipublicfiles.com/fairseq/gpt2_bpe/encoder.json'
+# wget -N 'https://dl.fbaipublicfiles.com/fairseq/gpt2_bpe/vocab.bpe'
+# wget -N 'https://dl.fbaipublicfiles.com/fairseq/gpt2_bpe/dict.txt'
 
 TASKS=$2 # QQP
 
@@ -134,13 +134,7 @@ do
     do
       LANG="input$INPUT_TYPE"
       echo "BPE encoding $SPLIT/$LANG"
-      python -m examples.roberta.multiprocessing_bpe_encoder \
-      --encoder-json encoder.json \
-      --vocab-bpe vocab.bpe \
-      --inputs "$TASK_DATA_FOLDER/processed/$SPLIT.raw.$LANG" \
-      --outputs "$TASK_DATA_FOLDER/processed/$SPLIT.$LANG" \
-      --workers 60 \
-      --keep-empty;
+      subword-nmt apply-bpe -c "bpe.32000" < "$TASK_DATA_FOLDER/processed/$SPLIT.raw.$LANG" > "$TASK_DATA_FOLDER/processed/$SPLIT.$LANG"
     done
   done
 
