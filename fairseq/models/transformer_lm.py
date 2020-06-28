@@ -420,4 +420,5 @@ def transformer_lm_wmt(args):
     args.decoder_ffn_embed_dim = getattr(args, 'decoder_ffn_embed_dim', 4096)
     args.decoder_attention_heads = getattr(args, 'decoder_attention_heads', 16)
     args.decoder_layers = getattr(args, 'decoder_layers', 6)
+    args.no_decoder_final_norm = getattr(args, 'no_decoder_final_norm', True)
     base_lm_architecture(args)
