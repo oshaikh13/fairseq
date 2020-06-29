@@ -358,6 +358,16 @@ class Trainer(object):
 
     @metrics.aggregate("train")
     def train_step(self, samples, raise_oom=False):
+        self.train_step_helper(samples, raise_oom=False) 
+        
+        augment_samples = getattr(self.task.dataset, "augment_samples", None)
+        if augment_samples:
+            new_samples = self.task.dataset.augment_samples(samples)
+            self.train_step_helper(augment_samples, raise_oom=False)
+        
+        return self.train_step_helper(samples, raise_oom=False)
+
+    def train_step_helper(self, samples, raise_oom=False):
         """Do forward, backward and parameter update."""
         if self._dummy_batch == "DUMMY":
             self._dummy_batch = samples[0]
