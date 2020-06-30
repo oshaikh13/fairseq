@@ -356,15 +356,16 @@ class Trainer(object):
         # task specific setup per epoch
         self.task.begin_epoch(epoch, self.get_model())
 
+    def set_sample_skip_attentions(self, samples, val = True):
+        for sample in samples:
+            sample["net_input"]["skip_cross_attention"] = val
+        return samples
+        
     @metrics.aggregate("train")
     def train_step(self, samples, raise_oom=False):
-        self.train_step_helper(samples, raise_oom=False) 
-        
-        augment_samples = getattr(self.task.dataset, "augment_samples", None)
-        if augment_samples:
-            new_samples = self.task.dataset.augment_samples(samples)
-            self.train_step_helper(augment_samples, raise_oom=False)
-        
+        samples = self.set_sample_skip_attentions(samples, True)
+        self.train_step_helper(samples, raise_oom=False)
+        samples = self.set_sample_skip_attentions(samples, False)
         return self.train_step_helper(samples, raise_oom=False)
 
     def train_step_helper(self, samples, raise_oom=False):

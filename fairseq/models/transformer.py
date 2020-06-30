@@ -274,6 +274,8 @@ class TransformerModel(FairseqEncoderDecoderModel):
                 src_lengths=src_lengths,
                 return_all_hiddens=return_all_hiddens,
             )
+        else:
+            logger.info("SKIPPING CROSS ATTN")
         decoder_out = self.decoder(
             prev_output_tokens,
             encoder_out=encoder_out,

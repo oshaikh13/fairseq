@@ -260,9 +260,6 @@ class LanguagePairDataset(FairseqDataset):
             input_feeding=self.input_feeding,
         )
 
-    def augment_samples(self, samples):
-        return samples
-
     def num_tokens(self, index):
         """Return the number of tokens in a sample. This value is used to
         enforce ``--max-tokens`` during batching."""
