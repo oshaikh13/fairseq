@@ -363,9 +363,10 @@ class Trainer(object):
         
     @metrics.aggregate("train")
     def train_step(self, samples, raise_oom=False):
-        samples = self.set_sample_skip_attentions(samples, True)
-        self.train_step_helper(samples, raise_oom=False)
-        samples = self.set_sample_skip_attentions(samples, False)
+        if self.args.mixed_lm_mt_train:
+            samples = self.set_sample_skip_attentions(samples, True)
+            self.train_step_helper(samples, raise_oom=False)
+            samples = self.set_sample_skip_attentions(samples, False)
         return self.train_step_helper(samples, raise_oom=False)
 
     def train_step_helper(self, samples, raise_oom=False):

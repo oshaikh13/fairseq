@@ -267,6 +267,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
         Copied from the base class, but without ``**kwargs``,
         which are not supported by TorchScript.
         """
+
         encoder_out = None
         if skip_cross_attention is not None:
             encoder_out = self.encoder(
@@ -274,8 +275,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
                 src_lengths=src_lengths,
                 return_all_hiddens=return_all_hiddens,
             )
-        else:
-            logger.info("SKIPPING CROSS ATTN")
+                    
         decoder_out = self.decoder(
             prev_output_tokens,
             encoder_out=encoder_out,
