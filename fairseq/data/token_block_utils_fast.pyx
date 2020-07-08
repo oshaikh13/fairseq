@@ -47,12 +47,13 @@ cdef np.ndarray[DTYPE_t, ndim=2] _fast_convert_to_np_array(list list_of_list):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
-cpdef np.ndarray[DTYPE_t, ndim=2] _get_slice_indices_fast(np.ndarray[DTYPE_t, ndim=1] sizes, str break_mode, int block_size, int document_sep_len):
+cpdef (np.ndarray[DTYPE_t, ndim=2], DTYPE_t) _get_slice_indices_fast(np.ndarray[DTYPE_t, ndim=1] sizes, str break_mode, int block_size, int document_sep_len, int sentences_per_block):
     cdef DTYPE_t tok_idx = 0
     cdef DTYPE_t sz_idx = 0
     cdef DTYPE_t curr_size = 0
     cdef DTYPE_t i = 0
     cdef DTYPE_t length
+    cdef DTYPE_t largest_block_size = -1
     cdef DTYPE_t total_size
     cdef DTYPE_t[:] sizes_view = sizes
     cdef np.ndarray[DTYPE_t, ndim=2] slice_indices
@@ -64,6 +65,20 @@ cpdef np.ndarray[DTYPE_t, ndim=2] _get_slice_indices_fast(np.ndarray[DTYPE_t, nd
         while sz_idx < len(sizes_view):
             if curr_size + sizes_view[sz_idx] <= block_size or curr_size == 0:
                 curr_size += sizes_view[sz_idx]
+                sz_idx += 1
+            else:
+                slice_indices_list.append((tok_idx, tok_idx + curr_size))
+                tok_idx += curr_size
+                curr_size = 0
+        if curr_size > 0:
+            slice_indices_list.append((tok_idx, tok_idx + curr_size))
+        slice_indices = _fast_convert_to_np_array(slice_indices_list)
+    elif break_mode == 'complete_sentences':
+        while sz_idx < len(sizes_view):
+            if (sz_idx == 0 || sz_idx % sentences_per_block != 0) or curr_size == 0:
+                curr_size += sizes_view[sz_idx]
+                if curr_size > largest_block_size:
+                    largest_block_size = curr_size
                 sz_idx += 1
             else:
                 slice_indices_list.append((tok_idx, tok_idx + curr_size))
@@ -100,7 +115,7 @@ cpdef np.ndarray[DTYPE_t, ndim=2] _get_slice_indices_fast(np.ndarray[DTYPE_t, nd
         slice_indices[:, 1] = cumsum
     else:
         raise ValueError('Invalid break_mode: ' + break_mode)
-    return slice_indices
+    return slice_indices, largest_block_size
 
 
 @cython.boundscheck(False)

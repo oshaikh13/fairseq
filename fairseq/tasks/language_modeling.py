@@ -68,13 +68,15 @@ class LanguageModelingTask(FairseqTask):
         # fmt: off
         parser.add_argument('data', help='path to data directory')
         parser.add_argument('--sample-break-mode', default='none',
-                            choices=['none', 'complete', 'complete_doc', 'eos'],
+                            choices=['none', 'complete', 'complete_doc', 'eos', 'complete_sentences'],
                             help='If omitted or "none", fills each sample with tokens-per-sample '
                                  'tokens. If set to "complete", splits samples only at the end '
                                  'of sentence, but may include multiple sentences per sample. '
                                  '"complete_doc" is similar but respects doc boundaries. '
                                  'If set to "eos", includes only one sentence per sample.')
         parser.add_argument('--tokens-per-sample', default=1024, type=int,
+                            help='max number of tokens per sample for LM dataset')
+        parser.add_argument('--sentences-per-block', default=1, type=int,
                             help='max number of tokens per sample for LM dataset')
         parser.add_argument('--output-dictionary-size', default=-1, type=int,
                             help='limit the size of output dictionary')
@@ -190,6 +192,7 @@ class LanguageModelingTask(FairseqTask):
             eos=self.dictionary.eos(),
             break_mode=self.args.sample_break_mode,
             include_targets=True,
+            sentences_per_block=self.args.sentences_per_block
         )
 
         add_eos_for_other_targets = (
