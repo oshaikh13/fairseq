@@ -75,7 +75,7 @@ cpdef (np.ndarray[DTYPE_t, ndim=2], DTYPE_t) _get_slice_indices_fast(np.ndarray[
         slice_indices = _fast_convert_to_np_array(slice_indices_list)
     elif break_mode == 'complete_sentences':
         while sz_idx < len(sizes_view):
-            if (sz_idx == 0 || sz_idx % sentences_per_block != 0) or curr_size == 0:
+            if (sz_idx == 0 or sz_idx % sentences_per_block != 0) or curr_size == 0:
                 curr_size += sizes_view[sz_idx]
                 if curr_size > largest_block_size:
                     largest_block_size = curr_size
