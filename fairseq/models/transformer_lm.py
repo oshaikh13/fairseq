@@ -272,8 +272,7 @@ class TransformerClassificationHead(nn.Module):
         self.out_proj = nn.Linear(inner_dim, num_classes)
 
     def forward(self, features, **kwargs):
-        x = features
-        x = F.max_pool1d(x.transpose(1, 2), x.shape[1]).squeeze()
+        x = F.avg_pool1d(features.transpose(1, 2), features.shape[1]).squeeze()
         x = self.dropout(x)
         x = self.dense(x)
         x = self.activation_fn(x)
