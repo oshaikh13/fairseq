@@ -16,7 +16,7 @@ python train.py CoLA-bin/ \
     --criterion sentence_prediction \
     --num-classes $NUM_CLASSES \
     --lr $LR \
-    --dropout 0.1 \
+    --dropout 0.15 \
     --weight-decay 0.01 --optimizer adam --adam-betas "(0.9, 0.98)" \
     --clip-norm 0.0 \
     --warmup-updates $WARMUP_UPDATES \
