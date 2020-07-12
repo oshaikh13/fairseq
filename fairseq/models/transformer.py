@@ -284,6 +284,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
             alignment_heads=alignment_heads,
             src_lengths=src_lengths,
             return_all_hiddens=return_all_hiddens,
+            skip_cross_attn=skip_cross_attention
         )
         return decoder_out
 
@@ -648,6 +649,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
         alignment_heads: Optional[int] = None,
         src_lengths: Optional[Any] = None,
         return_all_hiddens: bool = False,
+        skip_cross_attention: bool = False
     ):
         """
         Args:
@@ -671,6 +673,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
             incremental_state=incremental_state,
             alignment_layer=alignment_layer,
             alignment_heads=alignment_heads,
+            skip_cross_attention=skip_cross_attention,
         )
         if not features_only:
             x = self.output_layer(x)
@@ -684,6 +687,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
         full_context_alignment: bool = False,
         alignment_layer: Optional[int] = None,
         alignment_heads: Optional[int] = None,
+        skip_cross_attention: bool = False
     ):
         """
         Similar to *forward* but only return features.
@@ -763,6 +767,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
                 self_attn_padding_mask=self_attn_padding_mask,
                 need_attn=bool((idx == alignment_layer)),
                 need_head_weights=bool((idx == alignment_layer)),
+                skip_cross_attention=skip_cross_attention
             )
             inner_states.append(x)
             if layer_attn is not None and idx == alignment_layer:

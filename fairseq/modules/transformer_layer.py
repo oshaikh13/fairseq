@@ -252,6 +252,7 @@ class TransformerDecoderLayer(nn.Module):
         self_attn_padding_mask: Optional[torch.Tensor] = None,
         need_attn: bool = False,
         need_head_weights: bool = False,
+        skip_encoder_attn: bool = False
     ):
         """
         Args:
@@ -321,7 +322,7 @@ class TransformerDecoderLayer(nn.Module):
         if not self.normalize_before:
             x = self.self_attn_layer_norm(x)
 
-        if self.encoder_attn is not None:
+        if skip_encoder_attn == True and self.encoder_attn is not None:
             residual = x
             if self.normalize_before:
                 x = self.encoder_attn_layer_norm(x)
