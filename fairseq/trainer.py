@@ -573,8 +573,6 @@ class Trainer(object):
     @metrics.aggregate("valid")
     def valid_step(self, samples, raise_oom=False):
     
-        print(samples)
-    
         logging_output = None
         
         if self.args.mixed_lm_mt_train:

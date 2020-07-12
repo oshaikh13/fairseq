@@ -284,7 +284,7 @@ class TransformerModel(FairseqEncoderDecoderModel):
             alignment_heads=alignment_heads,
             src_lengths=src_lengths,
             return_all_hiddens=return_all_hiddens,
-            skip_cross_attn=skip_cross_attention
+            skip_cross_attention=skip_cross_attention
         )
         return decoder_out
 
