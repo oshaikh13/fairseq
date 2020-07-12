@@ -47,7 +47,7 @@ cdef np.ndarray[DTYPE_t, ndim=2] _fast_convert_to_np_array(list list_of_list):
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
-cpdef (np.ndarray[DTYPE_t, ndim=2], DTYPE_t) _get_slice_indices_fast(np.ndarray[DTYPE_t, ndim=1] sizes, str break_mode, int block_size, int document_sep_len, int sentences_per_block):
+cpdef np.ndarray[DTYPE_t, ndim=2] _get_slice_indices_fast(np.ndarray[DTYPE_t, ndim=1] sizes, str break_mode, int block_size, int document_sep_len, int sentences_per_block):
     cdef DTYPE_t tok_idx = 0
     cdef DTYPE_t sz_idx = 0
     cdef DTYPE_t curr_size = 0
@@ -115,7 +115,13 @@ cpdef (np.ndarray[DTYPE_t, ndim=2], DTYPE_t) _get_slice_indices_fast(np.ndarray[
         slice_indices[:, 1] = cumsum
     else:
         raise ValueError('Invalid break_mode: ' + break_mode)
-    return slice_indices, largest_block_size
+    
+    if largest_block_size > block_size:
+        raise ValueError('Invalid block_size: ' + str(block_size) + ". Current size is at " + str(largest_block_size) + ".")
+    
+    print("LARGEST BLOCK SIZE: " + str(largest_block_size))
+    
+    return slice_indices
 
 
 @cython.boundscheck(False)

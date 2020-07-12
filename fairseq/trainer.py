@@ -363,11 +363,15 @@ class Trainer(object):
         
     @metrics.aggregate("train")
     def train_step(self, samples, raise_oom=False):
+
+        logging_output = self.train_step_helper(samples, raise_oom=False)
+
         if self.args.mixed_lm_mt_train:
             samples = self.set_sample_skip_attentions(samples, True)
-            self.train_step_helper(samples, raise_oom=False)
+            logging_output = self.train_step_helper(samples, raise_oom=False)
             samples = self.set_sample_skip_attentions(samples, False)
-        return self.train_step_helper(samples, raise_oom=False)
+
+        return logging_output
 
     def train_step_helper(self, samples, raise_oom=False):
         """Do forward, backward and parameter update."""
@@ -567,7 +571,23 @@ class Trainer(object):
         return logging_output
 
     @metrics.aggregate("valid")
-    def valid_step(self, sample, raise_oom=False):
+    def valid_step(self, samples, raise_oom=False):
+    
+        print(samples)
+    
+        logging_output = None
+        
+        if self.args.mixed_lm_mt_train:
+            samples["net_input"]["skip_cross_attention"] = True
+            logging_output = self.valid_step_helper(samples, raise_oom=False)
+            samples["net_input"]["skip_cross_attention"] = False
+        else:
+            logging_output = self.valid_step_helper(samples, raise_oom=False)
+            
+
+        return logging_output
+    
+    def valid_step_helper(self, sample, raise_oom=False):
         """Do forward pass in evaluation mode."""
         if self._dummy_batch == "DUMMY":
             self._dummy_batch = sample

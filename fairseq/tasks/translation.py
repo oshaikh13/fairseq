@@ -20,6 +20,7 @@ from fairseq.data import (
     indexed_dataset,
     LanguagePairDataset,
     PrependTokenDataset,
+    TokenBlockDataset,
     StripTokenDataset,
     TruncateDataset,
 )
@@ -39,7 +40,7 @@ def load_langpair_dataset(
     combine, dataset_impl, upsample_primary,
     left_pad_source, left_pad_target, max_source_positions,
     max_target_positions, prepend_bos=False, load_alignments=False,
-    truncate_source=False, append_source_id=False
+    truncate_source=False, append_source_id=False, sentences_per_block=1
 ):
 
     def split_exists(split, src, tgt, lang, data_path):
@@ -81,7 +82,7 @@ def load_langpair_dataset(
         logger.info('{} {} {}-{} {} examples'.format(
             data_path, split_k, src, tgt, len(src_datasets[-1])
         ))
-
+        
         if not combine:
             break
 
@@ -118,7 +119,32 @@ def load_langpair_dataset(
         if indexed_dataset.dataset_exists(align_path, impl=dataset_impl):
             align_dataset = data_utils.load_indexed_dataset(align_path, None, dataset_impl)
 
+            
+    if sentences_per_block != 1:
+        
+        # it only makes sense to use complete sentences here!
+        src_dataset = TokenBlockDataset(
+            src_dataset,
+            src_dataset.sizes,
+            max_source_positions,
+            pad=src_dict.pad(),
+            eos=src_dict.eos(),
+            break_mode="complete_sentences",
+            sentences_per_block=sentences_per_block
+        )
+
+        tgt_dataset = TokenBlockDataset(
+            tgt_dataset,
+            tgt_dataset.sizes,
+            max_target_positions,
+            pad=tgt_dict.pad(),
+            eos=tgt_dict.eos(),
+            break_mode="complete_sentences",
+            sentences_per_block=sentences_per_block
+        )
+            
     tgt_dataset_sizes = tgt_dataset.sizes if tgt_dataset is not None else None
+    
     return LanguagePairDataset(
         src_dataset, src_dataset.sizes, src_dict,
         tgt_dataset, tgt_dataset_sizes, tgt_dict,
@@ -172,6 +198,8 @@ class TranslationTask(FairseqTask):
                             help='max number of tokens in the source sequence')
         parser.add_argument('--max-target-positions', default=1024, type=int, metavar='N',
                             help='max number of tokens in the target sequence')
+        parser.add_argument('--sentences-per-block', default=1, type=int, metavar='N',
+                            help='number of sentences in each sample')
         parser.add_argument('--upsample-primary', default=1, type=int,
                             help='amount to upsample primary dataset')
         parser.add_argument('--truncate-source', action='store_true', default=False,
@@ -255,6 +283,7 @@ class TranslationTask(FairseqTask):
             max_target_positions=self.args.max_target_positions,
             load_alignments=self.args.load_alignments,
             truncate_source=self.args.truncate_source,
+            sentences_per_block=self.args.sentences_per_block
         )
 
     def build_dataset_for_inference(self, src_tokens, src_lengths):
