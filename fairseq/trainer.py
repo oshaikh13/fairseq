@@ -235,11 +235,11 @@ class Trainer(object):
             # load model parameters
             try:
                 self.get_model().load_state_dict(
-                    state["model"], strict=True, args=self.args
+                    state["model"], strict=False, args=self.args
                 )
                 if utils.has_parameters(self.get_criterion()):
                     self.get_criterion().load_state_dict(
-                        state["criterion"], strict=True
+                        state["criterion"], strict=False
                     )
             except Exception:
                 raise Exception(
@@ -363,15 +363,16 @@ class Trainer(object):
         
     @metrics.aggregate("train")
     def train_step(self, samples, raise_oom=False):
-
-        logging_output = self.train_step_helper(samples, raise_oom=False)
-
+        
         if self.args.mixed_lm_mt_train:
+            samples = self.set_sample_skip_attentions(samples, False)
+            logging_output = self.train_step_helper(samples, raise_oom=False)
             samples = self.set_sample_skip_attentions(samples, True)
             logging_output = self.train_step_helper(samples, raise_oom=False)
-            samples = self.set_sample_skip_attentions(samples, False)
-
-        return logging_output
+            return logging_output
+        
+        return self.train_step_helper(samples, raise_oom=False)
+        
 
     def train_step_helper(self, samples, raise_oom=False):
         """Do forward, backward and parameter update."""

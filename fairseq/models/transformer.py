@@ -267,15 +267,15 @@ class TransformerModel(FairseqEncoderDecoderModel):
         Copied from the base class, but without ``**kwargs``,
         which are not supported by TorchScript.
         """
-
+        
         encoder_out = None
-        if skip_cross_attention is not None:
+        if skip_cross_attention == False:
             encoder_out = self.encoder(
                 src_tokens,
                 src_lengths=src_lengths,
                 return_all_hiddens=return_all_hiddens,
             )
-                    
+
         decoder_out = self.decoder(
             prev_output_tokens,
             encoder_out=encoder_out,
@@ -708,6 +708,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
                 - the decoder's features of shape `(batch, tgt_len, embed_dim)`
                 - a dictionary with any model-specific outputs
         """
+        
         if alignment_layer is None:
             alignment_layer = self.num_layers - 1
 

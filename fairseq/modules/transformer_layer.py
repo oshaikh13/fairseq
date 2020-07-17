@@ -321,8 +321,8 @@ class TransformerDecoderLayer(nn.Module):
         x = residual + x
         if not self.normalize_before:
             x = self.self_attn_layer_norm(x)
-
-        if skip_cross_attention == True and self.encoder_attn is not None:
+            
+        if skip_cross_attention == False and self.encoder_attn is not None:
             residual = x
             if self.normalize_before:
                 x = self.encoder_attn_layer_norm(x)
@@ -351,6 +351,7 @@ class TransformerDecoderLayer(nn.Module):
             x = residual + x
             if not self.normalize_before:
                 x = self.encoder_attn_layer_norm(x)
+
 
         residual = x
         if self.normalize_before:
