@@ -8,6 +8,9 @@ RoBERTa: A Robustly Optimized BERT Pretraining Approach.
 
 import logging
 
+from typing import Any, Dict, List, Optional, Tuple
+from torch import Tensor
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,6 +24,7 @@ from fairseq.models import (
 from fairseq.modules import LayerNorm, TransformerSentenceEncoder
 from fairseq.modules.quant_noise import quant_noise as apply_quant_noise_
 from fairseq.modules.transformer_sentence_encoder import init_bert_params
+from fairseq.models.fairseq_encoder import EncoderOut
 
 from .hub_interface import RobertaHubInterface
 
@@ -454,21 +458,91 @@ class RobertaEncoder(FairseqEncoder):
                   is a list of hidden states. Note that the hidden
                   states have shape `(src_len, batch, vocab)`.
         """
-        x, extra = self.extract_features(
+        x, extra, embeds = self.extract_features(
             src_tokens, return_all_hiddens=return_all_hiddens
         )
         if not features_only:
             x = self.output_layer(x, masked_tokens=masked_tokens)
-        return x, extra
+
+        encoder_padding_mask = src_tokens.eq(self.padding_idx)
+
+        return EncoderOut(
+            encoder_out=x.transpose(0, 1),  # T x B x C
+            encoder_padding_mask=encoder_padding_mask,  # B x T
+            encoder_embedding=embeds,  # B x T x C
+            encoder_states=extra["inner_states"],  # List[T x B x C]
+            src_tokens=None,
+            src_lengths=None,
+        )
+
+        # return x, extra
 
     def extract_features(self, src_tokens, return_all_hiddens=False, **kwargs):
-        inner_states, _ = self.sentence_encoder(
+        inner_states, _, embeds = self.sentence_encoder(
             src_tokens,
             last_state_only=not return_all_hiddens,
             token_embeddings=kwargs.get("token_embeddings", None),
         )
         features = inner_states[-1].transpose(0, 1)  # T x B x C -> B x T x C
-        return features, {"inner_states": inner_states if return_all_hiddens else None}
+        return features, {"inner_states": inner_states if return_all_hiddens else None}, embeds
+
+
+    @torch.jit.export
+    def reorder_encoder_out(self, encoder_out: EncoderOut, new_order):
+        """
+        Reorder encoder output according to *new_order*.
+
+        Args:
+            encoder_out: output from the ``forward()`` method
+            new_order (LongTensor): desired order
+
+        Returns:
+            *encoder_out* rearranged according to *new_order*
+        """
+        """
+        Since encoder_padding_mask and encoder_embedding are both of type
+        Optional[Tensor] in EncoderOut, they need to be copied as local
+        variables for Torchscript Optional refinement
+        """
+        encoder_padding_mask: Optional[Tensor] = encoder_out.encoder_padding_mask
+        encoder_embedding: Optional[Tensor] = encoder_out.encoder_embedding
+
+        new_encoder_out = (
+            encoder_out.encoder_out
+            if encoder_out.encoder_out is None
+            else encoder_out.encoder_out.index_select(1, new_order)
+        )
+        new_encoder_padding_mask = (
+            encoder_padding_mask
+            if encoder_padding_mask is None
+            else encoder_padding_mask.index_select(0, new_order)
+        )
+        new_encoder_embedding = (
+            encoder_embedding
+            if encoder_embedding is None
+            else encoder_embedding.index_select(0, new_order)
+        )
+        src_tokens = encoder_out.src_tokens
+        if src_tokens is not None:
+            src_tokens = src_tokens.index_select(0, new_order)
+
+        src_lengths = encoder_out.src_lengths
+        if src_lengths is not None:
+            src_lengths = src_lengths.index_select(0, new_order)
+
+        encoder_states = encoder_out.encoder_states
+        if encoder_states is not None:
+            for idx, state in enumerate(encoder_states):
+                encoder_states[idx] = state.index_select(1, new_order)
+
+        return EncoderOut(
+            encoder_out=new_encoder_out,  # T x B x C
+            encoder_padding_mask=new_encoder_padding_mask,  # B x T
+            encoder_embedding=new_encoder_embedding,  # B x T x C
+            encoder_states=encoder_states,  # List[T x B x C]
+            src_tokens=src_tokens,  # B x T
+            src_lengths=src_lengths,  # B x 1
+        )
 
     def output_layer(self, features, masked_tokens=None, **unused):
         return self.lm_head(features, masked_tokens)

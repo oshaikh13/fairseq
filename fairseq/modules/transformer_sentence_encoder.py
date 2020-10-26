@@ -245,6 +245,8 @@ class TransformerSentenceEncoder(nn.Module):
         if self.embed_scale is not None:
             x = x * self.embed_scale
 
+        embeds = x
+
         if self.embed_positions is not None:
             x = x + self.embed_positions(tokens, positions=positions)
 
@@ -283,4 +285,4 @@ class TransformerSentenceEncoder(nn.Module):
         if self.traceable:
             return torch.stack(inner_states), sentence_rep
         else:
-            return inner_states, sentence_rep
+            return inner_states, sentence_rep, embeds
