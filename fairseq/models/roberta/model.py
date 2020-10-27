@@ -398,6 +398,7 @@ class RobertaEncoder(FairseqEncoder):
     def __init__(self, args, dictionary):
         super().__init__(dictionary)
         self.args = args
+        self.padding_idx = dictionary.pad()
 
         if args.encoder_layers_to_keep:
             args.encoder_layers = len(args.encoder_layers_to_keep.split(","))

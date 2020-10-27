@@ -127,11 +127,28 @@ done
 echo "learn_bpe.py on ${TRAIN}..."
 python $BPEROOT/learn_bpe.py -s $BPE_TOKENS < $TRAIN > $BPE_CODE
 
-for L in $src $tgt; do
+# BPE encode SRC with BPE learned from WMT
+
+for L in $tgt; do
     for f in train.$L valid.$L test.$L; do
         echo "apply_bpe.py to ${f}..."
         python $BPEROOT/apply_bpe.py -c $BPE_CODE < $tmp/$f > $tmp/bpe.$f
     done
+done
+
+# BPE encode TGT with BPE learned from GPT
+
+mkdir -p gpt2_bpe
+wget -O gpt2_bpe/encoder.json https://dl.fbaipublicfiles.com/fairseq/gpt2_bpe/encoder.json
+wget -O gpt2_bpe/vocab.bpe https://dl.fbaipublicfiles.com/fairseq/gpt2_bpe/vocab.bpe
+for SPLIT in train valid test; do \
+    python fairseq/examples/roberta/multiprocessing_bpe_encoder.py \
+        --encoder-json gpt2_bpe/encoder.json \
+        --vocab-bpe gpt2_bpe/vocab.bpe \
+        --inputs wmt14_en_de/tmp/${SPLIT}.en \
+        --outputs wmt14_en_de/tmp/bpe.${SPLIT}.en \
+        --keep-empty \
+        --workers 60; \
 done
 
 perl $CLEAN -ratio 1.5 $tmp/bpe.train $src $tgt $prep/train 1 250
